@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""Bygg statisk sajt från /home/box/kunskapsbank/ till docs/ (GitHub Pages)."""
+"""Bygg statisk sajt från /home/box/kunskapsbank/ till docs/ (GitHub Pages).
+
+Epistemiskt kontrakt: N=88 från KATALOG; Tier obligatorisk; ingen tema-räkningsinflation
+på startsidan; ram = Människans lärande i en tid av digitala intelligenser.
+"""
 
 from __future__ import annotations
 
 import html
+import json
 import re
 import shutil
 from pathlib import Path
-from urllib.parse import urlparse
 
 try:
     import markdown
@@ -20,12 +24,18 @@ except ImportError as e:
 ROOT = Path(__file__).resolve().parent
 KB = Path("/home/box/kunskapsbank")
 OUT = ROOT / "docs"
-ASSETS_SRC = OUT / "assets"  # style/filter live under docs/assets and are kept
+
+FRAME = "Människans lärande i en tid av digitala intelligenser"
+CURATOR = "Chiron (kurator) + Jonatan Skäryd (redaktör)"
+CONTACT_MAIL = "jonatan.skaryd@gmail.com"
+LICENSE = "CC BY 4.0"
 
 THEME_LABELS = {
     "ai-och-larande": "AI och lärande",
     "analogt-vs-digitalt": "Analogt vs digitalt",
+    "feedback-bedomning": "Feedback och bedömning",
     "lasning-och-skrivande": "Läsning och skrivande",
+    "optimalt-larande-grunder": "Grunder",
     "papper-vs-skarm": "Papper vs skärm",
     "penna-vs-tangentbord": "Penna vs tangentbord",
     "uppmarksamhet-och-minne": "Uppmärksamhet och minne",
@@ -51,6 +61,26 @@ AGE_ORDER = [
 
 MD_EXT = ["tables", "fenced_code", "sane_lists", "smarty", "toc"]
 
+SYNTH_SECTION_ALIASES = {
+    "metadata": ("Metadata", "metadata"),
+    "finding": ("Finding", "Fynd", "finding", "fynd"),
+    "mechanism": ("Mechanism", "Mekanism", "mechanism", "mekanism"),
+    "limits": ("Limits", "Begränsningar", "limits", "begränsningar"),
+    "dies": (
+        "This claim dies if …",
+        "This claim dies if...",
+        "This claim dies if",
+        "Claim dies if",
+    ),
+    "sweden": (
+        "Swedish implication",
+        "Implikation",
+        "Implikation: *Höjer det lärandet?*",
+        "Relevans för svensk skola / *Höjer det lärandet?*",
+    ),
+    "links": ("Links", "Länkar", "links"),
+}
+
 
 def md_to_html(text: str) -> str:
     return markdown.markdown(text, extensions=MD_EXT)
@@ -61,7 +91,6 @@ def esc(s: str) -> str:
 
 
 def slug_from_syntes(name: str) -> str:
-    # SYNTES-foo.md -> foo
     base = Path(name).name
     if base.startswith("SYNTES-"):
         base = base[len("SYNTES-") :]
@@ -82,13 +111,12 @@ def parse_metadata(path: Path) -> dict[str, str]:
     return data
 
 
-def load_all_metadata() -> dict[str, dict]:
-    """Map catalog ID -> metadata dict; also index by folder name."""
+def load_all_metadata() -> tuple[dict[str, dict], dict[str, dict]]:
     by_id: dict[str, dict] = {}
     by_folder: dict[str, dict] = {}
     base = KB / "01-originaldokument"
     if not base.is_dir():
-        return by_id
+        return by_id, by_folder
     for folder in sorted(base.iterdir()):
         if not folder.is_dir() or folder.name.startswith("_"):
             continue
@@ -98,11 +126,10 @@ def load_all_metadata() -> dict[str, dict]:
         cid = meta.get("ID")
         if cid:
             by_id[cid] = meta
-    return by_id
+    return by_id, by_folder
 
 
 def extract_links(field: str) -> list[tuple[str, str]]:
-    """Return (label, relative_md_path) from markdown link field."""
     return re.findall(r"\[([^\]]+)\]\(([^)]+)\)", field)
 
 
@@ -123,11 +150,9 @@ def parse_katalog(path: Path) -> list[dict]:
         theme_list = [t.strip() for t in themes.split(";") if t.strip()]
         syntes_links = extract_links(syntes_field)
         original_links = extract_links(original_field)
-        # Prefer tema link for canonical synthesis page
         tema_path = None
         age_paths: list[str] = []
-        for label, href in syntes_links:
-            # normalize ../03-teman/... or similar
+        for _label, href in syntes_links:
             clean = href.replace("\\", "/")
             if "03-teman/" in clean:
                 tema_path = clean
@@ -156,7 +181,6 @@ def parse_katalog(path: Path) -> list[dict]:
 
 
 def resolve_kb_path(rel_from_katalog: str) -> Path | None:
-    """Katalog links are relative to 00-index/."""
     p = (KB / "00-index" / rel_from_katalog).resolve()
     try:
         p.relative_to(KB.resolve())
@@ -166,9 +190,7 @@ def resolve_kb_path(rel_from_katalog: str) -> Path | None:
 
 
 def pick_syntes_sources(katalog: list[dict]) -> dict[str, Path]:
-    """Map synthesis slug -> best source markdown path."""
     chosen: dict[str, Path] = {}
-    # 1) From catalog tema paths
     for row in katalog:
         if row["tema_path"]:
             p = resolve_kb_path(row["tema_path"])
@@ -179,12 +201,10 @@ def pick_syntes_sources(katalog: list[dict]) -> dict[str, Path]:
             if p:
                 slug = slug_from_syntes(p.name)
                 chosen.setdefault(slug, p)
-    # 2) All theme syntheses
     themes_dir = KB / "03-teman"
     if themes_dir.is_dir():
         for p in themes_dir.glob("*/SYNTES-*.md"):
             chosen.setdefault(slug_from_syntes(p.name), p)
-    # 3) Age syntheses
     ages_dir = KB / "02-synteser"
     if ages_dir.is_dir():
         for p in ages_dir.glob("*/SYNTES-*.md"):
@@ -203,7 +223,6 @@ def slug_to_katalog_id(katalog: list[dict], slug: str) -> str | None:
 
 
 def rewrite_md_links(md: str, page_depth: int) -> str:
-    """Rewrite relative .md links inside content to site HTML where possible."""
     prefix = "../" * page_depth
 
     def repl(m: re.Match) -> str:
@@ -213,11 +232,16 @@ def rewrite_md_links(md: str, page_depth: int) -> str:
         name = Path(href.split("#")[0]).name
         if name.startswith("SYNTES-") and name.endswith(".md"):
             return f"[{label}]({prefix}synteser/{slug_from_syntes(name)}.html)"
-        if name == "UTKAST.md":
-            return f"[{label}]({prefix}riktning.html)"
-        if name == "KATALOG.md":
-            return f"[{label}]({prefix}katalog.html)"
-        # theme folders
+        mapping = {
+            "UTKAST.md": "riktning.html",
+            "PRAKTIK.md": "praktik.html",
+            "MOTARGUMENT.md": "motargument.html",
+            "METOD.md": "metod.html",
+            "KATALOG.md": "katalog.html",
+            "ANDRINGSSLOGG.md": "changelog.html",
+        }
+        if name in mapping:
+            return f"[{label}]({prefix}{mapping[name]})"
         if "/03-teman/" in href.replace("\\", "/"):
             parts = href.replace("\\", "/").split("/")
             try:
@@ -253,16 +277,28 @@ def page_shell(
     prefix = "../" * depth
     nav = [
         ("index.html", "Start", "start"),
-        ("katalog.html", "Katalog", "katalog"),
-        ("teman/index.html", "Teman", "teman"),
-        ("alder/index.html", "Ålder", "alder"),
         ("riktning.html", "Riktning", "riktning"),
+        ("praktik.html", "Praktik", "praktik"),
+        ("metod.html", "Metod", "metod"),
+        ("motargument.html", "Motargument", "motargument"),
+        ("katalog.html", "Katalog", "katalog"),
+        ("sok.html", "Sök", "sok"),
     ]
     nav_html = []
     for href, label, key in nav:
         cur = ' aria-current="page"' if current == key else ""
         nav_html.append(f'<a href="{prefix}{href}"{cur}>{esc(label)}</a>')
-    desc = description or "Kunskapsbank om evidens kring lärande, skärmar och AI."
+    desc = description or f"{FRAME}. Evidens för svensk skola."
+    footer_links = [
+        (f"{prefix}metod.html", "Metod"),
+        (f"{prefix}changelog.html", "Ändringslogg"),
+        (f"{prefix}metod.html#citera", "Citera"),
+        (f"{prefix}metod.html#licens", "Licens"),
+        (f"mailto:{CONTACT_MAIL}", "Kontakt"),
+    ]
+    fl = " ".join(
+        f'<a href="{esc(h)}">{esc(lab)}</a>' for h, lab in footer_links
+    )
     return f"""<!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -277,7 +313,7 @@ def page_shell(
 <header class="site-header">
   <div class="wrap header-inner">
     <a class="brand" href="{prefix}index.html">Kunskapsbank <span>lärande</span></a>
-    <nav>{" ".join(nav_html)}</nav>
+    <nav class="nav-primary">{" ".join(nav_html)}</nav>
   </div>
 </header>
 <main class="wrap">
@@ -285,7 +321,9 @@ def page_shell(
 </main>
 <footer class="site-footer">
   <div class="wrap">
-    <p>Statisk sajt genererad från kunskapsbanken. Inga PDF:er kopieras — se DOI/URL i respektive syntes.</p>
+    <div class="footer-links">{fl}</div>
+    <p>{esc(CURATOR)} · {esc(LICENSE)} · <a href="mailto:{esc(CONTACT_MAIL)}">{esc(CONTACT_MAIL)}</a></p>
+    <p>Statisk sajt. Primär-PDF:er kopieras inte — se DOI/URL i respektive syntes. Unikt N från katalog.</p>
   </div>
 </footer>
 </body>
@@ -304,17 +342,29 @@ def crumbs(items: list[tuple[str, str | None]], depth: int) -> str:
     return '<nav class="breadcrumb" aria-label="Brödsmula">' + " · ".join(parts) + "</nav>"
 
 
+def tier_pill(tier: str) -> str:
+    if not tier:
+        return ""
+    cls = "tier-" + re.sub(r"[^A-Za-z0-9]+", "-", tier)
+    return f'<span class="tier-pill {esc(cls)}">{esc(tier)}</span>'
+
+
 def source_box(meta: dict, cid: str | None) -> str:
     if not meta and not cid:
         return ""
     rows = []
     if cid:
-        rows.append(f"<dt>ID</dt><dd><span class=\"id-badge\">{esc(cid)}</span></dd>")
+        rows.append(f'<dt>ID</dt><dd><span class="id-badge">{esc(cid)}</span></dd>')
+    tier = meta.get("Tier", "")
+    if tier:
+        rows.append(f"<dt>Tier</dt><dd>{tier_pill(tier)}</dd>")
     for key, label in [
         ("Titel", "Titel"),
         ("Författare", "Författare"),
         ("År", "År"),
         ("Typ", "Typ"),
+        ("Closed-book follow-up", "Closed-book"),
+        ("HE vs K–12", "HE vs K–12"),
         ("Källa/DOI", "Källa/DOI"),
         ("URL", "URL"),
         ("URL (författar-PDF)", "URL"),
@@ -324,7 +374,6 @@ def source_box(meta: dict, cid: str | None) -> str:
         if not val:
             continue
         if key.startswith("URL") or "doi.org" in val.lower() or val.startswith("http"):
-            # may contain multiple URLs
             urls = re.findall(r"https?://[^\s;]+", val)
             if urls:
                 links = " · ".join(
@@ -332,7 +381,6 @@ def source_box(meta: dict, cid: str | None) -> str:
                 )
                 rows.append(f"<dt>{esc(label)}</dt><dd>{links}</dd>")
             else:
-                # DOI-like without scheme
                 doi = re.search(r"10\.\d{4,}/\S+", val)
                 if doi:
                     u = "https://doi.org/" + doi.group(0).rstrip(".,;")
@@ -368,19 +416,209 @@ def source_box(meta: dict, cid: str | None) -> str:
     )
 
 
-def meta_for_row(row: dict, by_id: dict, by_folder: dict) -> dict:
-    if row["id"] in by_id:
-        return by_id[row["id"]]
-    if row.get("orig_folder") and row["orig_folder"] in by_folder:
-        return by_folder[row["orig_folder"]]
-    return {}
+def split_md_sections(raw: str) -> tuple[str, dict[str, str], str]:
+    """Return (title, sections_by_canonical_key, leftover_md)."""
+    title = ""
+    m = re.search(r"^#\s+(.+)$", raw, re.M)
+    if m:
+        title = m.group(1).strip()
+    parts = re.split(r"(?m)^(##\s+.+)$", raw)
+    preamble = parts[0] if parts else raw
+    sections: dict[str, str] = {}
+    leftover_chunks = [preamble]
+    i = 1
+    while i < len(parts) - 1:
+        header = parts[i].strip()
+        body = parts[i + 1]
+        htext = re.sub(r"^##\s+", "", header).strip()
+        matched = None
+        for key, aliases in SYNTH_SECTION_ALIASES.items():
+            for a in aliases:
+                if htext.lower().startswith(a.lower().rstrip("…").rstrip(".")):
+                    matched = key
+                    break
+            if matched:
+                break
+        if matched:
+            sections[matched] = body.strip()
+        else:
+            leftover_chunks.append(header + "\n" + body)
+        i += 2
+    leftover = "\n".join(leftover_chunks).strip()
+    # Drop leading H1 from leftover to avoid duplicate
+    leftover = re.sub(r"^#\s+.+\n?", "", leftover, count=1).strip()
+    return title, sections, leftover
+
+
+def first_bullet_block(text: str) -> str:
+    lines = []
+    for line in text.splitlines():
+        if line.strip().startswith(("-", "*")):
+            lines.append(line.strip().lstrip("-* ").strip())
+        elif lines and not line.strip():
+            break
+        elif lines and line.strip() and not line.strip().startswith(("#",)):
+            # continuation
+            lines[-1] = lines[-1] + " " + line.strip()
+    return " · ".join(lines[:8]) if lines else text.strip().split("\n\n")[0][:400]
+
+
+def synthesize_card_html(
+    *,
+    cid: str | None,
+    meta: dict,
+    sections: dict[str, str],
+    leftover: str,
+    related_ids: list[str],
+) -> str:
+    """Build structured synthesis sections; fill placeholders from meta/leftover."""
+    tier = meta.get("Tier", "")
+    n = meta.get("N") or meta.get("Stickprov") or ""
+    # Try pull N from Typ
+    if not n and meta.get("Typ"):
+        n = meta.get("Typ", "")
+    pop = meta.get("Åldersgrupp") or meta.get("Population") or ""
+    country = meta.get("Land") or meta.get("Country") or ""
+    subject = meta.get("Ämne") or meta.get("Subject") or meta.get("Titel") or ""
+    duration = meta.get("Duration") or meta.get("Varaktighet") or ""
+
+    def sec_html(key: str, heading: str, body_md: str, extra_class: str = "") -> str:
+        if not body_md.strip():
+            return ""
+        return (
+            f'<section class="synth-card {extra_class}" id="{esc(key)}">'
+            f"<h2>{esc(heading)}</h2>"
+            f'<div class="prose">{md_to_html(body_md)}</div></section>'
+        )
+
+    # Metadata card
+    meta_bits = []
+    if cid:
+        meta_bits.append(f"- **ID:** `{cid}`")
+    if tier:
+        meta_bits.append(f"- **Tier:** {tier}")
+    if n:
+        meta_bits.append(f"- **N / design:** {n}")
+    if pop:
+        meta_bits.append(f"- **Population:** {pop}")
+    if country:
+        meta_bits.append(f"- **Country:** {country}")
+    if subject:
+        meta_bits.append(f"- **Subject:** {subject}")
+    if duration:
+        meta_bits.append(f"- **Duration:** {duration}")
+    # closed-book from synthesis bold lines or meta
+    cb = meta.get("Closed-book follow-up", "")
+    if not cb:
+        m = re.search(r"\*\*Closed-book follow-up:\*\*\s*(.+)", leftover + "\n" + sections.get("finding", ""))
+        if m:
+            cb = m.group(1).strip()
+    if cb:
+        meta_bits.append(f"- **Closed-book follow-up:** {cb}")
+        if re.match(r"(?i)^nej", cb.strip()):
+            meta_bits.append("- **Utfallslabel:** prestation, inte lärande")
+
+    meta_md = sections.get("metadata") or "\n".join(meta_bits) or "_Metadata saknas — fylls vid nästa revison._"
+    finding_md = sections.get("finding")
+    if not finding_md:
+        # placeholder from leftover Fynd-ish paragraphs
+        finding_md = (
+            first_bullet_block(leftover)
+            if leftover
+            else "_Finding sammanfattas vid nästa revision från källans abstrakt; inga effektstorlekar inventeras här._"
+        )
+    mechanism_md = sections.get("mechanism") or (
+        "_Mekanism: en mening tilläggs vid revision — undvik author-voice utan konkurrerande mekanism._"
+    )
+    limits_md = sections.get("limits") or (
+        "_Begränsningar dokumenteras i källans METADATA/Typ; svensk klassrumsreplikation kan saknas._"
+    )
+    dies_md = sections.get("dies") or (
+        "_This claim dies if: motstridig closed-book-evidens i relevant population publiceras och överlever peer review._"
+    )
+    sweden_md = sections.get("sweden") or (
+        "_Swedish implication: **measure** closed-book och distraktionsfri tid — verbmening fylls per källa._"
+    )
+    links_md = sections.get("links")
+    if not links_md:
+        doi = meta.get("Källa/DOI") or meta.get("URL") or ""
+        link_lines = []
+        if doi:
+            link_lines.append(f"- Källa: {doi}")
+        if related_ids:
+            link_lines.append("- Relaterade: " + ", ".join(f"`{r}`" for r in related_ids))
+        links_md = "\n".join(link_lines) if link_lines else "_Se DOI i metadata-box._"
+
+    flags = ""
+    if tier == "position":
+        flags += '<span class="flag-warn">Tier = position — inte jämlik med RCT/meta</span>'
+    if cb and re.match(r"(?i)^nej", cb.strip()):
+        flags += '<span class="flag-warn">prestation, inte lärande</span>'
+
+    cards = [
+        flags,
+        sec_html("metadata", "Metadata", meta_md),
+        sec_html("finding", "Finding", finding_md),
+        sec_html("mechanism", "Mechanism", mechanism_md),
+        sec_html("limits", "Limits", limits_md),
+        sec_html("dies", "This claim dies if …", dies_md, "dies"),
+        sec_html("sweden", "Swedish implication", sweden_md, "sweden"),
+        sec_html("links", "Links", links_md),
+    ]
+    # Cap leftover prose roughly — show only if substantial unique content remains
+    extra = ""
+    if leftover and len(leftover) > 80:
+        # Avoid dumping entire duplicate if sections already captured
+        trimmed = leftover
+        if len(trimmed) > 2400:
+            trimmed = trimmed[:2400] + "\n\n… *(kortad i bygget; se källfil)*"
+        extra = f'<article class="prose section"><h2>Övrig syntestext</h2>{md_to_html(trimmed)}</article>'
+
+    return '<div class="synth-grid">' + "".join(c for c in cards if c) + "</div>" + extra
+
+
+def related_ids_for(cid: str | None, katalog: list[dict]) -> list[str]:
+    if not cid:
+        return []
+    row = next((r for r in katalog if r["id"] == cid), None)
+    if not row:
+        return []
+    themes = set(row["themes"])
+    related = []
+    for r in katalog:
+        if r["id"] == cid:
+            continue
+        if themes & set(r["themes"]):
+            related.append(r["id"])
+        if len(related) >= 6:
+            break
+    return related
+
+
+def render_kb_page(src: Path, *, depth: int, current: str, crumb_label: str, page_title: str | None = None) -> str:
+    raw = src.read_text(encoding="utf-8")
+    raw = rewrite_md_links(raw, depth)
+    title_m = re.search(r"^#\s+(.+)$", raw, re.M)
+    title = page_title or (title_m.group(1).strip() if title_m else crumb_label)
+    body = (
+        crumbs([("Start", "index.html"), (crumb_label, None)], depth)
+        + f'<h1 class="page-title">{esc(title)}</h1>'
+        + f'<article class="prose">{md_to_html(raw)}</article>'
+    )
+    # strip duplicate h1 inside article
+    body = re.sub(
+        r'(<article class="prose">)\s*<h1>[^<]+</h1>',
+        r"\1",
+        body,
+        count=1,
+    )
+    return page_shell(title, body, depth=depth, current=current)
 
 
 def build() -> None:
     if not KB.is_dir():
         raise SystemExit(f"Kunskapsbank saknas: {KB}")
 
-    # Clean generated HTML/dirs but keep assets
     if OUT.exists():
         for child in OUT.iterdir():
             if child.name == "assets":
@@ -394,32 +632,37 @@ def build() -> None:
     (OUT / "alder").mkdir(exist_ok=True)
     (OUT / "synteser").mkdir(exist_ok=True)
 
-    # Copy static assets into docs/assets
     assets = OUT / "assets"
     assets.mkdir(exist_ok=True)
     static = ROOT / "static"
-    for name in ("style.css", "filter.js"):
+    for name in ("style.css", "filter.js", "search.js"):
         src = static / name
         if not src.is_file():
             raise SystemExit(f"Saknar static/{name}")
         shutil.copy2(src, assets / name)
 
-    katalog = parse_katalog(KB / "00-index" / "KATALOG.md")
-    by_id = load_all_metadata()
-    by_folder = {
-        m["_folder"]: m
-        for m in by_id.values()
-        if "_folder" in m
-    }
-    # also folders without ID
-    od = KB / "01-originaldokument"
-    for folder in od.iterdir() if od.is_dir() else []:
-        if folder.is_dir() and not folder.name.startswith("_"):
-            meta = parse_metadata(folder / "METADATA.md")
-            meta["_folder"] = folder.name
-            by_folder.setdefault(folder.name, meta)
-            if meta.get("ID"):
-                by_id.setdefault(meta["ID"], meta)
+    katalog_all = parse_katalog(KB / "00-index" / "KATALOG.md")
+    by_id, by_folder = load_all_metadata()
+
+    # Rule: no Tier → does not render
+    katalog = []
+    skipped = []
+    for row in katalog_all:
+        meta = by_id.get(row["id"]) or (
+            by_folder.get(row["orig_folder"], {}) if row.get("orig_folder") else {}
+        )
+        tier = (meta or {}).get("Tier", "").strip()
+        if not tier:
+            skipped.append(row["id"])
+            continue
+        row = dict(row)
+        row["tier"] = tier
+        row["_meta"] = meta
+        katalog.append(row)
+
+    unique_n = len(katalog)
+    if unique_n != 88:
+        print(f"VARNING: förväntat N=88, fick {unique_n} (katalog_all={len(katalog_all)}, skipped={skipped})")
 
     syntes_map = pick_syntes_sources(katalog)
     id_to_slug: dict[str, str] = {}
@@ -434,39 +677,76 @@ def build() -> None:
             if slug in syntes_map:
                 id_to_slug[row["id"]] = slug
 
+    search_index = []
+
     # --- Synthesis pages ---
     for slug, src in sorted(syntes_map.items()):
         cid = slug_to_katalog_id(katalog, slug)
+        # Skip render if catalog id known but no tier
+        if cid and cid in skipped:
+            continue
         meta = by_id.get(cid or "", {})
         if not meta and cid:
-            # try folder from katalog
             for row in katalog:
-                if row["id"] == cid and row.get("orig_folder"):
-                    meta = by_folder.get(row["orig_folder"], {})
+                if row["id"] == cid:
+                    meta = row.get("_meta") or by_folder.get(row.get("orig_folder") or "", {})
                     break
+        # If this syntes maps to an id without tier, skip
+        if cid and not (meta or {}).get("Tier"):
+            # allow orphan syntes without id? only if we can infer — skip safer
+            if cid in {r["id"] for r in katalog_all}:
+                continue
+
         raw = src.read_text(encoding="utf-8")
-        raw = rewrite_md_links(raw, page_depth=1)
-        body_html = md_to_html(raw)
-        # strip duplicate h1 if present — keep page title
-        title_m = re.search(r"^#\s+(.+)$", src.read_text(encoding="utf-8"), re.M)
-        page_title = title_m.group(1).strip() if title_m else slug
-        box = source_box(meta, cid)
+        title, sections, leftover = split_md_sections(raw)
+        page_title = title or slug
+        related = related_ids_for(cid, katalog)
+        for k in list(sections.keys()):
+            sections[k] = rewrite_md_links(sections[k], 1)
+        card_html = synthesize_card_html(
+            cid=cid,
+            meta=meta or {},
+            sections=sections,
+            leftover=rewrite_md_links(leftover, 1),
+            related_ids=related,
+        )
+        box = source_box(meta or {}, cid)
         body = (
             crumbs([("Start", "index.html"), ("Synteser", None), (cid or slug, None)], 1)
             + f'<h1 class="page-title">{esc(page_title)}</h1>'
             + box
-            + f'<article class="prose">{body_html}</article>'
+            + card_html
         )
         (OUT / "synteser" / f"{slug}.html").write_text(
             page_shell(page_title, body, depth=1, current="katalog"),
             encoding="utf-8",
         )
+        # search index
+        search_blob = " ".join(
+            [
+                cid or "",
+                page_title,
+                (meta or {}).get("Tier", ""),
+                (meta or {}).get("Författare", ""),
+                sections.get("finding", "")[:500],
+                leftover[:500],
+            ]
+        )
+        search_index.append(
+            {
+                "id": cid or "",
+                "title": page_title,
+                "tier": (meta or {}).get("Tier", ""),
+                "href": f"synteser/{slug}.html",
+                "search": search_blob,
+            }
+        )
 
-    # --- Theme pages ---
+    # --- Theme pages (unique IDs, no fake stacked totals as unique N) ---
     themes_dir = KB / "03-teman"
-    theme_slugs = sorted(
-        d.name for d in themes_dir.iterdir() if d.is_dir()
-    ) if themes_dir.is_dir() else []
+    theme_slugs = (
+        sorted(d.name for d in themes_dir.iterdir() if d.is_dir()) if themes_dir.is_dir() else []
+    )
 
     for theme in theme_slugs:
         tdir = themes_dir / theme
@@ -475,67 +755,66 @@ def build() -> None:
         intro = ""
         if readme.is_file():
             intro = md_to_html(rewrite_md_links(readme.read_text(encoding="utf-8"), 1))
-        files = sorted(tdir.glob("SYNTES-*.md"))
+        # Unique catalog IDs in this theme
+        ids_in_theme = [r for r in katalog if theme in r["themes"]]
         items = []
-        for f in files:
-            slug = slug_from_syntes(f.name)
-            cid = slug_to_katalog_id(katalog, slug)
-            title_m = re.search(r"^#\s+(.+)$", f.read_text(encoding="utf-8"), re.M)
-            t = title_m.group(1).strip() if title_m else slug
-            badge = f'<span class="id">{esc(cid)}</span>' if cid else ""
+        for row in ids_in_theme:
+            slug = id_to_slug.get(row["id"])
+            if not slug:
+                continue
+            t = row["title"]
+            badge = f'<span class="id">{esc(row["id"])}</span>'
             items.append(
-                f'<li><a href="../synteser/{esc(slug)}.html">{badge}{esc(t)}</a></li>'
+                f'<li><a href="../synteser/{esc(slug)}.html">{badge}{tier_pill(row["tier"])} {esc(t)}</a></li>'
             )
         list_html = (
             f'<ul class="list-links">{"".join(items)}</ul>'
             if items
-            else '<p class="empty">Inga synteser ännu.</p>'
+            else '<p class="empty">Inga källor med tier i temat.</p>'
         )
         body = (
             crumbs([("Start", "index.html"), ("Teman", "teman/index.html"), (label, None)], 1)
             + f'<h1 class="page-title">{esc(label)}</h1>'
-            + f'<p class="meta-bar">{len(files)} synteser i temat</p>'
+            + f'<p class="meta-bar">{len(ids_in_theme)} unika käll-ID i temat (av totalt {unique_n})</p>'
             + (f'<article class="prose">{intro}</article>' if intro else "")
-            + '<section class="section"><h2>Synteser</h2>'
+            + '<section class="section"><h2>Källor</h2>'
             + list_html
             + "</section>"
         )
         (OUT / "teman" / f"{theme}.html").write_text(
-            page_shell(label, body, depth=1, current="teman"),
+            page_shell(label, body, depth=1, current="katalog"),
             encoding="utf-8",
         )
 
-    # Themes index
     tiles = []
     for theme in theme_slugs:
         label = THEME_LABELS.get(theme, theme)
-        n = len(list((themes_dir / theme).glob("SYNTES-*.md")))
+        n_unique = sum(1 for r in katalog if theme in r["themes"])
         tiles.append(
             f'<a class="tile" href="{esc(theme)}.html"><strong>{esc(label)}</strong>'
-            f"<span>{n} synteser</span></a>"
+            f"<span>{n_unique} unika ID</span></a>"
         )
     body = (
-        crumbs([("Start", "../index.html"), ("Teman", None)], 1)
-        + '<h1 class="page-title">Teman</h1>'
-        + '<p class="meta-bar">Tvärgående teman i kunskapsbanken.</p>'
-        + f'<div class="grid-3">{"".join(tiles)}</div>'
+        crumbs([("Start", "index.html"), ("Teman", None)], 1)
+        + '<h1 class="page-title">Teman</h2>'  # typo fix below
     )
-    # fix crumb depth - crumbs uses prefix ../ * depth, and we passed ../index which is wrong
     body = (
         crumbs([("Start", "index.html"), ("Teman", None)], 1)
         + '<h1 class="page-title">Teman</h1>'
-        + '<p class="meta-bar">Tvärgående teman i kunskapsbanken.</p>'
+        + f'<p class="meta-bar">Routing-teman. Unikt N i banken är {unique_n} (räknas en gång på katalog/start).</p>'
         + f'<div class="grid-3">{"".join(tiles)}</div>'
     )
     (OUT / "teman" / "index.html").write_text(
-        page_shell("Teman", body, depth=1, current="teman"),
+        page_shell("Teman", body, depth=1, current="katalog"),
         encoding="utf-8",
     )
 
     # --- Age pages ---
     ages_dir = KB / "02-synteser"
     age_slugs = [a for a in AGE_ORDER if (ages_dir / a).is_dir()]
-    for extra in sorted(d.name for d in ages_dir.iterdir() if d.is_dir()) if ages_dir.is_dir() else []:
+    for extra in (
+        sorted(d.name for d in ages_dir.iterdir() if d.is_dir()) if ages_dir.is_dir() else []
+    ):
         if extra not in age_slugs:
             age_slugs.append(extra)
 
@@ -544,14 +823,23 @@ def build() -> None:
         label = AGE_LABELS.get(age, age)
         files = sorted(adir.glob("SYNTES-*.md"))
         items = []
+        seen = set()
         for f in files:
             slug = slug_from_syntes(f.name)
             cid = slug_to_katalog_id(katalog, slug)
+            if cid and cid in skipped:
+                continue
+            if slug in seen:
+                continue
+            seen.add(slug)
             title_m = re.search(r"^#\s+(.+)$", f.read_text(encoding="utf-8"), re.M)
             t = title_m.group(1).strip() if title_m else slug
             badge = f'<span class="id">{esc(cid)}</span>' if cid else ""
+            tier = ""
+            if cid and cid in by_id:
+                tier = tier_pill(by_id[cid].get("Tier", ""))
             items.append(
-                f'<li><a href="../synteser/{esc(slug)}.html">{badge}{esc(t)}</a></li>'
+                f'<li><a href="../synteser/{esc(slug)}.html">{badge}{tier}{esc(t)}</a></li>'
             )
         list_html = (
             f'<ul class="list-links">{"".join(items)}</ul>'
@@ -561,32 +849,31 @@ def build() -> None:
         body = (
             crumbs([("Start", "index.html"), ("Ålder", "alder/index.html"), (label, None)], 1)
             + f'<h1 class="page-title">{esc(label)}</h1>'
-            + f'<p class="meta-bar">{len(files)} synteser för åldersgruppen</p>'
+            + f'<p class="meta-bar">Synteser i åldersmappen (routing — unikt N = {unique_n})</p>'
             + '<section class="section"><h2>Synteser</h2>'
             + list_html
             + "</section>"
         )
         (OUT / "alder" / f"{age}.html").write_text(
-            page_shell(label, body, depth=1, current="alder"),
+            page_shell(label, body, depth=1, current="katalog"),
             encoding="utf-8",
         )
 
     tiles = []
     for age in age_slugs:
         label = AGE_LABELS.get(age, age)
-        n = len(list((ages_dir / age).glob("SYNTES-*.md")))
         tiles.append(
             f'<a class="tile" href="{esc(age)}.html"><strong>{esc(label)}</strong>'
-            f"<span>{n} synteser</span></a>"
+            f"<span>åldersrouting</span></a>"
         )
     body = (
         crumbs([("Start", "index.html"), ("Ålder", None)], 1)
         + '<h1 class="page-title">Åldersgrupper</h1>'
-        + '<p class="meta-bar">Synteser sorterade efter ålder och mognad.</p>'
+        + f'<p class="meta-bar">Routing efter ålder. Unikt N = {unique_n}.</p>'
         + f'<div class="grid-3">{"".join(tiles)}</div>'
     )
     (OUT / "alder" / "index.html").write_text(
-        page_shell("Åldersgrupper", body, depth=1, current="alder"),
+        page_shell("Åldersgrupper", body, depth=1, current="katalog"),
         encoding="utf-8",
     )
 
@@ -601,21 +888,21 @@ def build() -> None:
         if slug:
             syn_link = f'<a href="synteser/{esc(slug)}.html">Läs syntes</a>'
         else:
-            syn_link = "<span class=\"empty\">—</span>"
+            syn_link = '<span class="empty">—</span>'
         theme_chips = "".join(
             f'<a class="chip" href="teman/{esc(t)}.html">{esc(THEME_LABELS.get(t, t))}</a>'
             for t in row["themes"]
             if t in THEME_LABELS or (themes_dir / t).is_dir()
         )
         search = " ".join(
-            [row["id"], row["title"], row["year"], row["age"], " ".join(row["themes"])]
+            [row["id"], row["title"], row["year"], row["age"], row["tier"], " ".join(row["themes"])]
         )
         trs.append(
             "<tr data-katalog-row "
             f'data-search="{esc(search)}" '
             f'data-teman="{esc("|".join(row["themes"]))}">'
             f'<td data-label="ID"><span class="id-badge">{esc(row["id"])}</span></td>'
-            f'<td data-label="Titel"><strong>{esc(row["title"])}</strong></td>'
+            f'<td data-label="Titel"><strong>{esc(row["title"])}</strong> {tier_pill(row["tier"])}</td>'
             f'<td data-label="År">{esc(row["year"])}</td>'
             f'<td data-label="Teman">{theme_chips or esc(", ".join(row["themes"]))}</td>'
             f'<td data-label="Syntes">{syn_link}</td>'
@@ -624,9 +911,9 @@ def build() -> None:
     body = (
         crumbs([("Start", "index.html"), ("Katalog", None)], 0)
         + '<h1 class="page-title">Katalog</h1>'
-        + f'<p class="meta-bar">{len(katalog)} källor från KATALOG.md</p>'
+        + f'<p class="meta-bar">Unikt N = <strong>{unique_n}</strong> källor (från KATALOG.md, med Tier).</p>'
         + '<div class="filters">'
-        + '<input id="filter-q" type="search" placeholder="Filtrera ID, titel, år…" aria-label="Filtrera katalog">'
+        + '<input id="filter-q" type="search" placeholder="Filtrera ID, titel, år, tier…" aria-label="Filtrera katalog">'
         + f'<select id="filter-tema" aria-label="Filtrera tema">{"".join(options)}</select>'
         + '<span id="filter-count" class="meta-bar"></span>'
         + "</div>"
@@ -641,65 +928,129 @@ def build() -> None:
         encoding="utf-8",
     )
 
-    # --- Riktning ---
-    utkast = (KB / "04-riktning" / "UTKAST.md").read_text(encoding="utf-8")
-    utkast = rewrite_md_links(utkast, 0)
-    body = (
-        crumbs([("Start", "index.html"), ("Riktning", None)], 0)
-        + '<h1 class="page-title">Riktning</h1>'
-        + '<p class="meta-bar">Utkast utifrån evidensen i kunskapsbanken.</p>'
-        + f'<article class="prose">{md_to_html(utkast)}</article>'
-    )
+    # --- Stance / method pages ---
     (OUT / "riktning.html").write_text(
-        page_shell("Riktning", body, depth=0, current="riktning"),
+        render_kb_page(
+            KB / "04-riktning" / "UTKAST.md",
+            depth=0,
+            current="riktning",
+            crumb_label="Riktning",
+        ),
+        encoding="utf-8",
+    )
+    (OUT / "praktik.html").write_text(
+        render_kb_page(
+            KB / "04-riktning" / "PRAKTIK.md",
+            depth=0,
+            current="praktik",
+            crumb_label="Praktik",
+        ),
+        encoding="utf-8",
+    )
+    (OUT / "motargument.html").write_text(
+        render_kb_page(
+            KB / "04-riktning" / "MOTARGUMENT.md",
+            depth=0,
+            current="motargument",
+            crumb_label="Motargument",
+        ),
+        encoding="utf-8",
+    )
+    # Metod with cite/license anchors
+    metod_raw = (KB / "00-index" / "METOD.md").read_text(encoding="utf-8")
+    metod_raw = rewrite_md_links(metod_raw, 0)
+    metod_html = md_to_html(metod_raw)
+    metod_html = metod_html.replace("<h2>Citera denna bank</h2>", '<h2 id="citera">Citera denna bank</h2>')
+    metod_html = metod_html.replace("<h2>Licens</h2>", '<h2 id="licens">Licens</h2>')
+    metod_html = re.sub(r"<h1>[^<]+</h1>", "", metod_html, count=1)
+    body = (
+        crumbs([("Start", "index.html"), ("Metod", None)], 0)
+        + '<h1 class="page-title">Metod</h1>'
+        + f'<article class="prose">{metod_html}</article>'
+    )
+    (OUT / "metod.html").write_text(
+        page_shell("Metod", body, depth=0, current="metod"),
         encoding="utf-8",
     )
 
-    # --- Index ---
+    # Changelog
+    clog = KB / "00-index" / "ANDRINGSSLOGG.md"
+    if clog.is_file():
+        (OUT / "changelog.html").write_text(
+            render_kb_page(clog, depth=0, current="metod", crumb_label="Ändringslogg", page_title="Ändringslogg"),
+            encoding="utf-8",
+        )
+
+    # Search page + index
+    (OUT / "search-index.json").write_text(
+        json.dumps(search_index, ensure_ascii=False, indent=0),
+        encoding="utf-8",
+    )
+    body = (
+        crumbs([("Start", "index.html"), ("Sök", None)], 0)
+        + '<h1 class="page-title">Sök</h1>'
+        + '<p class="meta-bar">Fulltextsök i synteser (klientindex).</p>'
+        + '<div class="filters">'
+        + '<input id="site-search-q" type="search" data-index="search-index.json" '
+        + 'placeholder="Laddar index…" disabled aria-label="Sök synteser" style="min-width:min(100%,28rem)">'
+        + "</div>"
+        + '<div id="site-search-results" class="section"></div>'
+        + '<script src="assets/search.js" defer></script>'
+    )
+    (OUT / "sok.html").write_text(
+        page_shell("Sök", body, depth=0, current="sok"),
+        encoding="utf-8",
+    )
+
+    # --- Homepage: frame + conclusion; riktning/praktik first; library second; N once; no theme count inflation ---
     theme_tiles = "".join(
         f'<a class="tile" href="teman/{esc(t)}.html"><strong>{esc(THEME_LABELS.get(t, t))}</strong>'
-        f"<span>{len(list((themes_dir / t).glob('SYNTES-*.md')))} synteser</span></a>"
+        f"<span>öppna tema</span></a>"
         for t in theme_slugs
     )
-    age_tiles = "".join(
-        f'<a class="tile" href="alder/{esc(a)}.html"><strong>{esc(AGE_LABELS.get(a, a))}</strong>'
-        f"<span>{len(list((ages_dir / a).glob('SYNTES-*.md')))} synteser</span></a>"
-        for a in age_slugs
+    conclusion = (
+        "Optimalt lärande är bestående kunskap, uppmärksamhet och metakognition — mätt utan genvägar. "
+        "Skolan som skyddad kognitiv zon är en hypotes att mäta (distraktionsfri tid, closed-book), "
+        "inte metafysik om papper; förbud är nödvändiga men otillräckliga."
     )
     body = f"""
 <section class="hero">
-  <h1>Evidens kring lärande, skärmar och AI</h1>
-  <p class="lede">Kuraterad kunskapsbank för svensk skola. Två ledfrågor styr urval, syntes och riktning.</p>
+  <h1>{esc(FRAME)}</h1>
+  <p class="lede">Kunskapsbank för svensk skola. Under ramen ligger två lastbärande frågor — allt annat är routing.</p>
+  <p class="conclusion">{esc(conclusion)}</p>
+  <div class="hero-actions">
+    <a class="primary" href="riktning.html">Riktning</a>
+    <a class="primary" href="praktik.html">Praktik</a>
+    <a href="metod.html">Metod</a>
+    <a href="motargument.html">Motargument</a>
+  </div>
   <div class="lead-grid">
     <a class="card lead-card" href="riktning.html">
       <span class="lead-num">1</span>
       <h2>Vad är optimalt lärande?</h2>
-      <p>Kognition, ålder/mognad och pedagogik — oberoende av medium. Bestående kunskap, uppmärksamhet och metakognition.</p>
+      <p>Mediumoberoende: bestående kunskap, uppmärksamhet, metakognition — closed-book.</p>
       <span class="more">Se riktning →</span>
     </a>
-    <a class="card lead-card" href="riktning.html">
+    <a class="card lead-card" href="praktik.html">
       <span class="lead-num">2</span>
       <h2>Hur när AI och skärmar är överallt?</h2>
-      <p>Hur gör vi optimalt lärande i en verklighet där AI och skärmar redan finns i svensk skola?</p>
-      <span class="more">Se riktning →</span>
+      <p>Stop / start / measure per stadium. Designad digital ≠ genväg; papper ≠ pedagogik.</p>
+      <span class="more">Se praktik →</span>
     </a>
   </div>
 </section>
 <section class="section">
-  <h2>Utforska</h2>
+  <h2>Bibliotek</h2>
+  <p class="library-note">Unikt N = <strong>{unique_n}</strong> källor (från KATALOG.md). Teman nedan är routing — räknas inte upp som separata totaler.</p>
   <div class="grid-3">
-    <a class="tile" href="katalog.html"><strong>Katalog</strong><span>{len(katalog)} källor med ID, år och teman</span></a>
-    <a class="tile" href="teman/index.html"><strong>Teman</strong><span>{len(theme_slugs)} tvärgående teman</span></a>
-    <a class="tile" href="alder/index.html"><strong>Åldersgrupper</strong><span>{len(age_slugs)} nivåer från tidig barndom till vuxen</span></a>
+    <a class="tile" href="katalog.html"><strong>Katalog</strong><span>ID, tier, år och synteslänkar</span></a>
+    <a class="tile" href="sok.html"><strong>Sök</strong><span>Fulltext i synteser</span></a>
+    <a class="tile" href="teman/index.html"><strong>Teman</strong><span>Routing, inte parallella banker</span></a>
   </div>
 </section>
 <section class="section">
   <h2>Teman</h2>
   <div class="grid-3">{theme_tiles}</div>
-</section>
-<section class="section">
-  <h2>Ålder</h2>
-  <div class="grid-3">{age_tiles}</div>
 </section>
 """
     (OUT / "index.html").write_text(
@@ -708,18 +1059,19 @@ def build() -> None:
             body,
             depth=0,
             current="start",
-            description="Vad är optimalt lärande — och hur gör vi det när AI och skärmar är överallt?",
+            description=f"{FRAME}. Vad är optimalt lärande — och hur när AI och skärmar är överallt?",
         ),
         encoding="utf-8",
     )
 
     html_pages = list(OUT.rglob("*.html"))
-    ids_ok = all(row["id"] for row in katalog)
+    must = ["metod.html", "motargument.html", "praktik.html", "riktning.html", "index.html"]
+    for m in must:
+        if not (OUT / m).is_file():
+            raise SystemExit(f"Saknar {m}")
     print(f"Byggde {len(html_pages)} HTML-sidor i {OUT}")
-    print(f"Katalogposter: {len(katalog)} (IDs: {', '.join(r['id'] for r in katalog)})")
-    print(f"Unika synteser: {len(syntes_map)}")
-    if not ids_ok:
-        raise SystemExit("Katalog saknar ID")
+    print(f"Unikt N={unique_n}; skipped_no_tier={skipped}")
+    print(f"Synteser i index: {len(search_index)}")
 
 
 if __name__ == "__main__":
