@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1100" width="2000" height="1100" role="img">
+<title>Praktik — Stop / Start / Measure</title>
+<defs>
+  <filter id="sh3" x="-2%" y="-2%" width="104%" height="108%">
+    <feDropShadow dx="0" dy="1" stdDeviation="3" flood-color="#1a1f2e" flood-opacity="0.07"/>
+  </filter>
+</defs>
+<rect width="100%" height="100%" fill="#f7f5f0"/>
+<text x="60" y="48" font-family="ui-sans-serif, system-ui, sans-serif" font-size="32" font-weight="700" fill="#1a1f2e" letter-spacing="-0.5">Praktik — Stop · Start · Measure</text>
+<text x="60" y="82" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#5c6578">Stegvisa handlingar per stadium. Inte policyetiketter.</text>
+
+<rect x="204.0" y="110" width="427.0" height="62" rx="10" fill="#1f5c4a" filter="url(#sh3)"/>
+<text x="417.5" y="151.0" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="700" fill="#ffffff">F–3</text>
+
+<rect x="639.0" y="110" width="427.0" height="62" rx="10" fill="#1f5c4a" filter="url(#sh3)"/>
+<text x="852.5" y="151.0" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Åk 4–6</text>
+
+<rect x="1074.0" y="110" width="427.0" height="62" rx="10" fill="#1f5c4a" filter="url(#sh3)"/>
+<text x="1287.5" y="151.0" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Åk 7–9</text>
+
+<rect x="1509.0" y="110" width="427.0" height="62" rx="10" fill="#1f5c4a" filter="url(#sh3)"/>
+<text x="1722.5" y="151.0" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="700" fill="#ffffff">Gymnasium</text>
+
+<rect x="60" y="186.0" width="130" height="261.3333333333333" rx="10" fill="#f8efe8" stroke="#e2ddd3"/>
+<text x="125.0" y="322.66666666666663" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700" fill="#7a3e1d">Stop</text>
+
+<rect x="204.0" y="186.0" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="204.0" y="186.0" width="6" height="261.3333333333333" rx="3" fill="#7a3e1d"/>
+<text x="222.0" y="299.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">Keyboard-first bokstäver;</text>
+<text x="222.0" y="321.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">GenAI som skriver elevens text;</text>
+<text x="222.0" y="343.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">skärm som default för nybörjarläsning.</text>
+
+<rect x="639.0" y="186.0" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="639.0" y="186.0" width="6" height="261.3333333333333" rx="3" fill="#7a3e1d"/>
+<text x="657.0" y="299.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">Oreglerad 1:1 under genomgång;</text>
+<text x="657.0" y="321.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">färdiga GenAI-lösningar i övning;</text>
+<text x="657.0" y="343.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">anta att «tyst i fickan» är gratis.</text>
+
+<rect x="1074.0" y="186.0" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="1074.0" y="186.0" width="6" height="261.3333333333333" rx="3" fill="#7a3e1d"/>
+<text x="1092.0" y="299.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">Facit-GenAI under practice;</text>
+<text x="1092.0" y="321.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">laptop-multitasking i synfält;</text>
+<text x="1092.0" y="343.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">AI-uppgifter utan separat closed-book.</text>
+
+<rect x="1509.0" y="186.0" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="1509.0" y="186.0" width="6" height="261.3333333333333" rx="3" fill="#7a3e1d"/>
+<text x="1527.0" y="299.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">GenAI-producerad inlämning</text>
+<text x="1527.0" y="321.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">som bedöms som lärande;</text>
+<text x="1527.0" y="343.66666666666663" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">ersätta productive struggle.</text>
+
+<rect x="60" y="459.3333333333333" width="130" height="261.3333333333333" rx="10" fill="#e6f0ec" stroke="#e2ddd3"/>
+<text x="125.0" y="596.0" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700" fill="#1f5c4a">Start</text>
+
+<rect x="204.0" y="459.3333333333333" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="204.0" y="459.3333333333333" width="6" height="261.3333333333333" rx="3" fill="#1f5c4a"/>
+<text x="222.0" y="573.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">Explicit handskrift (läslighet+flyt);</text>
+<text x="222.0" y="595.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">phonics vid behov; digital pen</text>
+<text x="222.0" y="617.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">som stöd — inte ersättning.</text>
+
+<rect x="639.0" y="459.3333333333333" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="639.0" y="459.3333333333333" width="6" height="261.3333333333333" rx="3" fill="#1f5c4a"/>
+<text x="657.0" y="573.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">Penna för begreppsanteckning;</text>
+<text x="657.0" y="595.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">skärmfria zoner vid djupläsning;</text>
+<text x="657.0" y="617.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">retrieval/spacing i matte &amp; SO/NO.</text>
+
+<rect x="1074.0" y="459.3333333333333" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="1074.0" y="459.3333333333333" width="6" height="261.3333333333333" rx="3" fill="#1f5c4a"/>
+<text x="1092.0" y="573.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">Enhet off body vid deep work;</text>
+<text x="1092.0" y="595.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">GenAI med guardrails (ledtrådar);</text>
+<text x="1092.0" y="617.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">källträning separat från djupläsning.</text>
+
+<rect x="1509.0" y="459.3333333333333" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="1509.0" y="459.3333333333333" width="6" height="261.3333333333333" rx="3" fill="#1f5c4a"/>
+<text x="1527.0" y="573.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">Bastani-logik: practice med/utan</text>
+<text x="1527.0" y="595.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">tutor-AI; bedöm utan verktyget;</text>
+<text x="1527.0" y="617.0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">feedback på task/process (ej ego).</text>
+
+<rect x="60" y="732.6666666666666" width="130" height="261.3333333333333" rx="10" fill="#f0efe9" stroke="#e2ddd3"/>
+<text x="125.0" y="869.3333333333333" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700" fill="#5c6578">Measure</text>
+
+<rect x="204.0" y="732.6666666666666" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="204.0" y="732.6666666666666" width="6" height="261.3333333333333" rx="3" fill="#5c6578"/>
+<text x="222.0" y="846.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">Avkodning closed-book;</text>
+<text x="222.0" y="868.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">handstil i åk 1-bedömning;</text>
+<text x="222.0" y="890.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">enhet ur synfält vid encoding.</text>
+
+<rect x="639.0" y="732.6666666666666" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="639.0" y="732.6666666666666" width="6" height="261.3333333333333" rx="3" fill="#5c6578"/>
+<text x="657.0" y="846.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">Closed-book exit tickets;</text>
+<text x="657.0" y="868.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">andel tid utan peer-multitasking;</text>
+<text x="657.0" y="890.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">lokal IFAU-lik uppföljning.</text>
+
+<rect x="1074.0" y="732.6666666666666" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="1074.0" y="732.6666666666666" width="6" height="261.3333333333333" rx="3" fill="#5c6578"/>
+<text x="1092.0" y="846.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">Closed-book provandel;</text>
+<text x="1092.0" y="868.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">distraktionsfria minuter/dag;</text>
+<text x="1092.0" y="890.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">peer-spillover-proxy (synlig skärm).</text>
+
+<rect x="1509.0" y="732.6666666666666" width="427.0" height="261.3333333333333" rx="12" fill="#ffffff" stroke="#e2ddd3" stroke-width="1.5" filter="url(#sh3)"/>
+<rect x="1509.0" y="732.6666666666666" width="6" height="261.3333333333333" rx="3" fill="#5c6578"/>
+<text x="1527.0" y="846.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">Delta tool-practice vs closed-book;</text>
+<text x="1527.0" y="868.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">kan eleven förklara utan chatten;</text>
+<text x="1527.0" y="890.3333333333333" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#1a1f2e">sömn/skärm i elevhälsa (SLEEP).</text>
+
+<rect x="60" y="1030" width="1880" height="48" rx="10" fill="#e6f0ec"/>
+<text x="1000.0" y="1060" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="600" fill="#1f5c4a">Mät distraktionsfri tid och closed-book — inte policyetikett.</text>
+</svg>

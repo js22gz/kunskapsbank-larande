@@ -447,3 +447,27 @@ nav a:hover, nav a[aria-current="page"] { color: var(--accent); }
   border-color: var(--accent);
 }
 .library-note { color: var(--muted); font-size: 0.95rem; }
+
+/* Visuellt — startsida figurer */
+.visual-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+figure.visual-card {
+  margin: 0;
+  padding: 1rem 1.1rem 1.15rem;
+}
+figure.visual-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: calc(var(--radius) - 4px);
+  background: #fff;
+}
+figure.visual-card figcaption {
+  margin-top: 0.75rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
