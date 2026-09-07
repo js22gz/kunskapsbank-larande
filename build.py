@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bygg statisk sajt från /home/box/kunskapsbank/ till docs/ (GitHub Pages).
 
-Epistemiskt kontrakt: N=88 från KATALOG; Tier obligatorisk; ingen tema-räkningsinflation
+Epistemiskt kontrakt: N=96 från KATALOG; Tier obligatorisk; ingen tema-räkningsinflation
 på startsidan; ram = Människans lärande i en tid av digitala intelligenser.
 """
 
@@ -661,8 +661,8 @@ def build() -> None:
         katalog.append(row)
 
     unique_n = len(katalog)
-    if unique_n != 88:
-        print(f"VARNING: förväntat N=88, fick {unique_n} (katalog_all={len(katalog_all)}, skipped={skipped})")
+    if unique_n != 96:
+        print(f"VARNING: förväntat N=96, fick {unique_n} (katalog_all={len(katalog_all)}, skipped={skipped})")
 
     syntes_map = pick_syntes_sources(katalog)
     id_to_slug: dict[str, str] = {}
