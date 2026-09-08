@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bygg statisk sajt från /home/box/kunskapsbank/ till docs/ (GitHub Pages).
 
-Epistemiskt kontrakt: N=96 från KATALOG; Tier obligatorisk; ingen tema-räkningsinflation
+Epistemiskt kontrakt: N=95 från KATALOG (DI/KNOW 2026-09-08; tidigare site-N=96 utan DI/KNOW); Tier obligatorisk; ingen tema-räkningsinflation
 på startsidan; ram = Människans lärande i en tid av digitala intelligenser.
 """
 
@@ -33,6 +33,7 @@ LICENSE = "CC BY 4.0"
 THEME_LABELS = {
     "ai-och-larande": "AI och lärande",
     "analogt-vs-digitalt": "Analogt vs digitalt",
+    "explicit-undervisning-kunskap": "Explicit undervisning & kunskapsbygge",
     "feedback-bedomning": "Feedback och bedömning",
     "lasning-och-skrivande": "Läsning och skrivande",
     "optimalt-larande-grunder": "Grunder",
@@ -661,8 +662,8 @@ def build() -> None:
         katalog.append(row)
 
     unique_n = len(katalog)
-    if unique_n != 96:
-        print(f"VARNING: förväntat N=96, fick {unique_n} (katalog_all={len(katalog_all)}, skipped={skipped})")
+    if unique_n != 95:
+        print(f"VARNING: förväntat N=95, fick {unique_n} (katalog_all={len(katalog_all)}, skipped={skipped})")
 
     syntes_map = pick_syntes_sources(katalog)
     id_to_slug: dict[str, str] = {}
@@ -1047,7 +1048,7 @@ def build() -> None:
       <figcaption>Ram → ledfrågor → destinationer. Teman är endast routing.</figcaption>
     </figure>
     <figure class="card visual-card">
-      <img src="assets/evidenslandskap.svg" alt="Evidenslandskap unikt N=96" width="1600" loading="lazy">
+      <img src="assets/evidenslandskap.svg" alt="Evidenslandskap unikt N=95" width="1600" loading="lazy">
       <figcaption>Primärtema × tier. ★ load-bearing (Bastani, Delgado, IFAU, ITS, Abrahamsson).</figcaption>
     </figure>
     <figure class="card visual-card">
